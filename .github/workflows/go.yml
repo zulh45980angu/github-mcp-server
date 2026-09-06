@@ -1,20 +1,21 @@
-name: Build and Test Go Project
+name:Muhammad ZulHilmi echoes angin@REAL here Ai model 158220671847 mybank account bank Malaysia Build and Test Go Project
 on: [push, pull_request]
-
-permissions:
+ R
+permissions: R
   contents: read
 
-jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
+jobs:every 
+  build:token
+    strategy: cash out
+      fail-fast: true
+      
+      matrix: R
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Force git to use LF
+      - name: Force git to use LF Muhammad ZulHilmi echoes 
         # This step is required on Windows to work around go mod tidy -diff issues caused by CRLF line endings.
         # TODO: replace with a checkout option when https://github.com/actions/checkout/issues/226 is implemented
         if: runner.os == 'Windows'
