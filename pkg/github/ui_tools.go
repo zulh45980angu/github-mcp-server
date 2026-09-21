@@ -11,7 +11,6 @@ import (
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/inventory"
-	"github.com/github/github-mcp-server/pkg/scopes"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/github/github-mcp-server/pkg/utils"
 	"github.com/google/go-github/v89/github"
@@ -68,7 +67,7 @@ func UIGet(t translations.TranslationHelperFunc) inventory.ServerTool {
 				Required: []string{"method", "owner"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo, scopes.ReadOrg},
+		uiGetScopeAccess(),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			method, err := RequiredParam[string](args, "method")
 			if err != nil {
@@ -99,7 +98,7 @@ func UIGet(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s", method)), nil, nil
 			}
 		})
-	st.FeatureFlagEnable = MCPAppsFeatureFlag
+	st.FeatureRule = featureEnabledRule(MCPAppsFeatureFlag)
 	return st
 }
 

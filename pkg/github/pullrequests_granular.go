@@ -62,7 +62,7 @@ func prUpdateTool(
 				Required:   required,
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -103,7 +103,7 @@ func prUpdateTool(
 			return utils.NewToolResultText(string(r)), nil, nil
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -195,7 +195,7 @@ func GranularUpdatePullRequestDraftState(t translations.TranslationHelperFunc) i
 				Required: []string{"owner", "repo", "pullNumber", "draft"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -272,7 +272,7 @@ func GranularUpdatePullRequestDraftState(t translations.TranslationHelperFunc) i
 			return utils.NewToolResultText("pull request marked as ready for review"), nil, nil
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -304,7 +304,7 @@ func GranularRequestPullRequestReviewers(t translations.TranslationHelperFunc) i
 				Required: []string{"owner", "repo", "pullNumber", "reviewers"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -351,7 +351,7 @@ func GranularRequestPullRequestReviewers(t translations.TranslationHelperFunc) i
 			return utils.NewToolResultText(string(r)), nil, nil
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -397,7 +397,7 @@ func GranularCreatePullRequestReview(t translations.TranslationHelperFunc) inven
 				Required: []string{"owner", "repo", "pullNumber"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -436,7 +436,7 @@ func GranularCreatePullRequestReview(t translations.TranslationHelperFunc) inven
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -465,7 +465,7 @@ func GranularSubmitPendingPullRequestReview(t translations.TranslationHelperFunc
 				Required: []string{"owner", "repo", "pullNumber", "event"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -500,7 +500,7 @@ func GranularSubmitPendingPullRequestReview(t translations.TranslationHelperFunc
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -527,7 +527,7 @@ func GranularDeletePendingPullRequestReview(t translations.TranslationHelperFunc
 				Required: []string{"owner", "repo", "pullNumber"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -555,7 +555,7 @@ func GranularDeletePendingPullRequestReview(t translations.TranslationHelperFunc
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -589,7 +589,7 @@ func GranularAddPullRequestReviewComment(t translations.TranslationHelperFunc) i
 				Required: []string{"owner", "repo", "pullNumber", "path", "body", "subjectType"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -666,12 +666,41 @@ func GranularAddPullRequestReviewComment(t translations.TranslationHelperFunc) i
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
 // GranularResolveReviewThread creates a tool to resolve a review thread.
 func GranularResolveReviewThread(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return granularResolveReviewThread(t, false, toolConfig{})
+}
+
+// GranularResolveReviewThreadWithResolutionReason creates the feature-gated variant with resolution reasons.
+func GranularResolveReviewThreadWithResolutionReason(t translations.TranslationHelperFunc, opts ...ToolOption) inventory.ServerTool {
+	cfg := newToolConfig(opts)
+	st := granularResolveReviewThread(t, true, cfg)
+	if cfg.hostType == utils.HostTypeGHES {
+		st.Enabled = func(context.Context) (bool, error) { return false, nil }
+	}
+	return st
+}
+
+func granularResolveReviewThread(t translations.TranslationHelperFunc, withResolutionReason bool, cfg toolConfig) inventory.ServerTool {
+	withResolutionReason = withResolutionReason && cfg.hostType != utils.HostTypeGHES
+
+	properties := map[string]*jsonschema.Schema{
+		"threadID": {
+			Type:        "string",
+			Description: "The node ID of the review thread to resolve (e.g., PRRT_kwDOxxx)",
+		},
+	}
+	if withResolutionReason {
+		properties["resolutionReason"] = &jsonschema.Schema{
+			Type:        "string",
+			Description: "Optional reason for resolving a Copilot code review thread: addressed, wont-fix, or invalid.",
+		}
+	}
+
 	st := NewTool(
 		ToolsetMetadataPullRequests,
 		mcp.Tool{
@@ -684,21 +713,26 @@ func GranularResolveReviewThread(t translations.TranslationHelperFunc) inventory
 				OpenWorldHint:   jsonschema.Ptr(true),
 			},
 			InputSchema: &jsonschema.Schema{
-				Type: "object",
-				Properties: map[string]*jsonschema.Schema{
-					"threadID": {
-						Type:        "string",
-						Description: "The node ID of the review thread to resolve (e.g., PRRT_kwDOxxx)",
-					},
-				},
-				Required: []string{"threadID"},
+				Type:       "object",
+				Properties: properties,
+				Required:   []string{"threadID"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			threadID, err := RequiredParam[string](args, "threadID")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			var resolutionReasonPtr *string
+			if withResolutionReason {
+				resolutionReason, hasResolutionReason, err := OptionalParamOK[string](args, "resolutionReason")
+				if err != nil {
+					return utils.NewToolResultError(err.Error()), nil, nil
+				}
+				if hasResolutionReason {
+					resolutionReasonPtr = &resolutionReason
+				}
 			}
 
 			gqlClient, err := deps.GetGQLClient(ctx)
@@ -706,11 +740,34 @@ func GranularResolveReviewThread(t translations.TranslationHelperFunc) inventory
 				return utils.NewToolResultErrorFromErr("failed to get GitHub GraphQL client", err), nil, nil
 			}
 
-			result, err := ResolveReviewThread(ctx, gqlClient, threadID, true)
+			if !withResolutionReason {
+				result, err := ResolveReviewThread(ctx, gqlClient, threadID, true)
+				return result, nil, err
+			}
+			result, err := ResolveReviewThreadWithReason(ctx, gqlClient, threadID, resolutionReasonPtr, true)
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	switch {
+	case withResolutionReason:
+		st.FeatureRule = inventory.NewFeatureRule(
+			[]inventory.FeatureFlag{inventory.FeatureFlag(FeatureFlagPullRequestsGranular), FeatureFlagThreadResolutionReason},
+			func(featureAsBool inventory.FeatureResolver) bool {
+				return featureAsBool(inventory.FeatureFlag(FeatureFlagPullRequestsGranular)) &&
+					featureAsBool(FeatureFlagThreadResolutionReason)
+			},
+		)
+	case cfg.hostType == utils.HostTypeGHES:
+		st.FeatureRule = pullRequestsGranularFeatureRule
+	default:
+		st.FeatureRule = inventory.NewFeatureRule(
+			[]inventory.FeatureFlag{inventory.FeatureFlag(FeatureFlagPullRequestsGranular), FeatureFlagThreadResolutionReason},
+			func(featureAsBool inventory.FeatureResolver) bool {
+				return featureAsBool(inventory.FeatureFlag(FeatureFlagPullRequestsGranular)) &&
+					!featureAsBool(FeatureFlagThreadResolutionReason)
+			},
+		)
+	}
 	return st
 }
 
@@ -738,7 +795,7 @@ func GranularUnresolveReviewThread(t translations.TranslationHelperFunc) invento
 				Required: []string{"threadID"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			threadID, err := RequiredParam[string](args, "threadID")
 			if err != nil {
@@ -754,7 +811,7 @@ func GranularUnresolveReviewThread(t translations.TranslationHelperFunc) invento
 			return result, nil, err
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }
 
@@ -796,7 +853,7 @@ func GranularAddPullRequestReviewCommentReaction(t translations.TranslationHelpe
 				Required: []string{"owner", "repo", "comment_id", "content"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		scopes.RequireAll(scopes.Repo),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -836,6 +893,83 @@ func GranularAddPullRequestReviewCommentReaction(t translations.TranslationHelpe
 			return utils.NewToolResultText(string(r)), nil, nil
 		},
 	)
-	st.FeatureFlagEnable = FeatureFlagPullRequestsGranular
+	st.FeatureRule = pullRequestsGranularFeatureRule
+	return st
+}
+
+// GranularRemovePullRequestReviewCommentReaction removes a reaction from a pull request review comment.
+func GranularRemovePullRequestReviewCommentReaction(t translations.TranslationHelperFunc) inventory.ServerTool {
+	st := NewTool(
+		ToolsetMetadataPullRequests,
+		mcp.Tool{
+			Name:        "remove_pull_request_review_comment_reaction",
+			Description: t("TOOL_REMOVE_PULL_REQUEST_REVIEW_COMMENT_REACTION_DESCRIPTION", "Remove a reaction from a pull request review comment."),
+			Annotations: &mcp.ToolAnnotations{
+				Title:           t("TOOL_REMOVE_PULL_REQUEST_REVIEW_COMMENT_REACTION_USER_TITLE", "Remove Pull Request Review Comment Reaction"),
+				ReadOnlyHint:    false,
+				DestructiveHint: jsonschema.Ptr(true),
+				OpenWorldHint:   jsonschema.Ptr(true),
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"owner": {
+						Type:        "string",
+						Description: "Repository owner (username or organization)",
+					},
+					"repo": {
+						Type:        "string",
+						Description: "Repository name",
+					},
+					"comment_id": {
+						Type:        "number",
+						Description: "The numeric pull request review comment ID. Use the number from a #discussion_r... anchor, not the GraphQL thread node ID (PRRT_...).",
+						Minimum:     jsonschema.Ptr(1.0),
+					},
+					"reaction_id": {
+						Type:        "number",
+						Description: "The reaction ID to remove",
+						Minimum:     jsonschema.Ptr(1.0),
+					},
+				},
+				Required: []string{"owner", "repo", "comment_id", "reaction_id"},
+			},
+		},
+		scopes.RequireAll(scopes.Repo),
+		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
+			owner, err := RequiredParam[string](args, "owner")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			repo, err := RequiredParam[string](args, "repo")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			commentID, err := RequiredBigInt(args, "comment_id")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			reactionID, err := RequiredBigInt(args, "reaction_id")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
+			client, err := deps.GetClient(ctx)
+			if err != nil {
+				return utils.NewToolResultErrorFromErr("failed to get GitHub client", err), nil, nil
+			}
+
+			resp, err := client.Reactions.DeletePullRequestCommentReaction(ctx, owner, repo, commentID, reactionID)
+			if resp != nil && resp.Body != nil {
+				defer func() { _ = resp.Body.Close() }()
+			}
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to remove reaction from pull request review comment", resp, err), nil, nil
+			}
+
+			return utils.NewToolResultText("reaction successfully removed from pull request review comment"), nil, nil
+		},
+	)
+	st.FeatureRule = pullRequestsGranularFeatureRule
 	return st
 }

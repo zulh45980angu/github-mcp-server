@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +17,12 @@ import (
 )
 
 // RemoteMCPEnthusiasticGreeting is a dummy test feature flag .
-const RemoteMCPEnthusiasticGreeting = "remote_mcp_enthusiastic_greeting"
+const RemoteMCPEnthusiasticGreeting inventory.FeatureFlag = "remote_mcp_enthusiastic_greeting"
 
-func featureCheckerFor(enabledFlags ...string) func(context.Context, string) (bool, error) {
+func featureCheckerFor(enabledFlags ...inventory.FeatureFlag) inventory.FeatureFlagChecker {
 	enabled := make(map[string]bool, len(enabledFlags))
 	for _, flag := range enabledFlags {
-		enabled[flag] = true
+		enabled[string(flag)] = true
 	}
 	return func(_ context.Context, flagName string) (bool, error) {
 		return enabled[flagName], nil
@@ -41,12 +42,12 @@ func HelloWorldTool(t translations.TranslationHelperFunc) inventory.ServerTool {
 				ReadOnlyHint: true,
 			},
 		},
-		[]scopes.Scope{},
+		scopes.NoScopes(),
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, _ map[string]any) (*mcp.CallToolResult, any, error) {
 
 			// Check feature flag to determine greeting style
 			greeting := "Hello, world!"
-			if deps.IsFeatureEnabled(ctx, RemoteMCPEnthusiasticGreeting) {
+			if deps.IsFeatureEnabled(ctx, string(RemoteMCPEnthusiasticGreeting)) {
 				greeting += " Welcome to the future of MCP! 🎉"
 			}
 
@@ -90,7 +91,7 @@ func TestHelloWorld_ConditionalBehavior_Featureflag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var enabledFlags []string
+			var enabledFlags []inventory.FeatureFlag
 			if tt.featureFlagEnabled {
 				enabledFlags = append(enabledFlags, RemoteMCPEnthusiasticGreeting)
 			}
@@ -201,6 +202,11 @@ func TestResolveFeatureFlags(t *testing.T) {
 			expectedFlags:   []string{FeatureFlagIssuesGranular},
 		},
 		{
+			name:            "thread resolution reason can be directly enabled",
+			enabledFeatures: []string{FeatureFlagThreadResolutionReason},
+			expectedFlags:   []string{FeatureFlagThreadResolutionReason},
+		},
+		{
 			name:            "insiders does not enable user-only allowed flags",
 			enabledFeatures: nil,
 			insidersMode:    true,
@@ -224,6 +230,71 @@ func TestResolveFeatureFlags(t *testing.T) {
 			for _, flag := range tt.unexpectedFlags {
 				assert.False(t, result[flag], "expected flag %q to not be enabled", flag)
 			}
+		})
+	}
+}
+
+func TestThreadResolutionReasonToolVariants(t *testing.T) {
+	tests := []struct {
+		name      string
+		flags     []inventory.FeatureFlag
+		host      utils.HostType
+		toolName  string
+		hasReason bool
+	}{
+		{
+			name:     "consolidated flag off",
+			toolName: "pull_request_review_write",
+		},
+		{
+			name:      "consolidated flag on",
+			flags:     []inventory.FeatureFlag{FeatureFlagThreadResolutionReason},
+			toolName:  "pull_request_review_write",
+			hasReason: true,
+		},
+		{
+			name:     "granular flag off",
+			flags:    []inventory.FeatureFlag{inventory.FeatureFlag(FeatureFlagPullRequestsGranular)},
+			toolName: "resolve_review_thread",
+		},
+		{
+			name:      "granular flag on",
+			flags:     []inventory.FeatureFlag{inventory.FeatureFlag(FeatureFlagPullRequestsGranular), FeatureFlagThreadResolutionReason},
+			toolName:  "resolve_review_thread",
+			hasReason: true,
+		},
+		{
+			name:     "consolidated flag on GHES",
+			flags:    []inventory.FeatureFlag{FeatureFlagThreadResolutionReason},
+			host:     utils.HostTypeGHES,
+			toolName: "pull_request_review_write",
+		},
+		{
+			name:     "granular flag on GHES",
+			flags:    []inventory.FeatureFlag{inventory.FeatureFlag(FeatureFlagPullRequestsGranular), FeatureFlagThreadResolutionReason},
+			host:     utils.HostTypeGHES,
+			toolName: "resolve_review_thread",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inv, err := NewInventory(translations.NullTranslationHelper, WithHost(tt.host)).
+				WithToolsets([]string{"all"}).
+				WithFeatureChecker(featureCheckerFor(tt.flags...)).
+				Build()
+			require.NoError(t, err)
+
+			var matches []inventory.ServerTool
+			for _, tool := range inv.AvailableTools(context.Background()) {
+				if tool.Tool.Name == tt.toolName {
+					matches = append(matches, tool)
+				}
+			}
+			require.Len(t, matches, 1)
+			schema := matches[0].Tool.InputSchema.(*jsonschema.Schema)
+			_, hasReason := schema.Properties["resolutionReason"]
+			assert.Equal(t, tt.hasReason, hasReason)
 		})
 	}
 }
